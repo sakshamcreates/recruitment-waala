@@ -16,6 +16,7 @@ type BaseOpportunity = {
     | {
         kind: "official";
         source: string;
+        provider?: "himalayas";
         officialUrl?: string;
         verifiedOn?: string;
       };

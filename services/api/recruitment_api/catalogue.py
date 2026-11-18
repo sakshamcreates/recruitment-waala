@@ -21,6 +21,7 @@ from .contracts import (
     now,
 )
 from .database import get_session
+from .ingestion.himalayas_policy import allows_apply, identity
 from .ingestion.policy import in_scope
 from .models import Change, Details, Job, Observation, Organisation, Publication, Source
 from .pagination import after, decode, encode
@@ -55,11 +56,18 @@ def visible(*, listing=False):
         )
         .join(
             Source,
-            (Source.id == Observation.source_id) & (Source.organisation_id == Organisation.id),
+            Source.id == Observation.source_id,
         )
         .outerjoin(polling, polling.c.source_id == Source.id)
         .where(
             or_(polling.c.source_id.is_(None), Observation.observed_at >= Source.approved_at),
+            or_(
+                Source.organisation_id == Organisation.id,
+                (polling.c.configuration["adapter"].astext == "himalayas")
+                & (Source.slug == "himalayas")
+                & Organisation.slug.startswith("himalayas-employer-")
+                & Job.cycle_key.startswith("himalayas:"),
+            ),
             Job.category.in_(CATEGORIES),
             Job.published_at <= func.statement_timestamp(),
             Publication.review_state == "approved",
@@ -71,11 +79,15 @@ def visible(*, listing=False):
             Job.official_url == Observation.source_url,
         )
     )
+    active = (Job.status == "published") & or_(
+        expiry.is_(None), expiry > func.statement_timestamp()
+    )
     if listing:
-        return statement.where(
-            Job.status == "published", or_(expiry.is_(None), expiry > func.statement_timestamp())
-        )
-    return statement.where(Job.status.in_(("published", "expired", "withdrawn")))
+        return statement.where(active)
+    return statement.where(
+        Job.status.in_(("published", "expired", "withdrawn")),
+        or_(polling.c.configuration["adapter"].astext.is_distinct_from("himalayas"), active),
+    )
 
 
 def approved_url(value: str | None, reference: str) -> str | None:
@@ -92,6 +104,11 @@ def source_links(notice, application, endpoint, config):
         official = approved_url(notice, endpoint)
         return official, approved_url(application, official) if official else None
     official = notice if in_scope(notice, config.get("notice_prefixes", [])) else None
+    if config.get("adapter") == "himalayas":
+        return (
+            official if identity(official) else None,
+            application if allows_apply(official, application) else None,
+        )
     apply = (
         application
         if official and in_scope(application, config.get("application_prefixes", []))
@@ -123,6 +140,7 @@ def project(row) -> Opportunity:
         details={**detail.category_fields, "category": job.category},
         provenance=Attribution(
             source=source.slug,
+            provider="himalayas" if config and config.get("adapter") == "himalayas" else None,
             official_url=official,
             observed_at=observation.observed_at,
             verified_at=publication.verified_at,

@@ -1,5 +1,6 @@
 import http.client
 import ipaddress
+import os
 import socket
 import ssl
 import time
@@ -9,6 +10,7 @@ from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
 
 from ..contracts import https_origin
+from .himalayas_policy import is_api_url
 from .policy import PollConfig, in_scope
 
 AGENT = "RecruitmentWaala"
@@ -57,6 +59,8 @@ class SafeTransport:
     def fetch(self, url: str, media: tuple[str, ...]) -> bytes:
         if not in_scope(url, self.config.fetch_prefixes):
             raise FetchError("outside_fetch_scope")
+        if self.config.adapter == "himalayas" and not is_api_url(url):
+            raise FetchError("outside_himalayas_api")
         host = https_origin(url)
         if self.config.adapter.startswith("government"):
             if host not in self.robots:
@@ -95,15 +99,17 @@ class SafeTransport:
             path = parts.path or "/"
             if parts.query:
                 path += "?" + parts.query
-            conn.request(
-                "GET",
-                path,
-                headers={
-                    "User-Agent": AGENT,
-                    "Accept-Encoding": "identity",
-                    "Accept": ", ".join(media),
-                },
-            )
+            headers = {
+                "User-Agent": AGENT,
+                "Accept-Encoding": "identity",
+                "Accept": ", ".join(media),
+            }
+            if self.config.adapter == "himalayas" and is_api_url(url):
+                if key := os.getenv("HIMALAYAS_API_KEY"):
+                    if not key.isascii() or any(char.isspace() for char in key):
+                        raise FetchError("invalid_himalayas_key")
+                    headers["Authorization"] = f"Bearer {key}"
+            conn.request("GET", path, headers=headers)
             response = conn.getresponse()
             if response.status != 200:
                 retry = response.status in {408, 429, 500, 502, 503, 504}

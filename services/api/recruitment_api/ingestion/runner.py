@@ -12,6 +12,8 @@ from .. import schema
 from ..contracts import now
 from ..database import engine
 from .adapters import ADAPTERS, Discovery, digest
+from .himalayas import HimalayasAdapter
+from .himalayas_storage import employer_id, status_batch, withdraw_confirmed
 from .policy import PollConfig
 from .transport import FetchError, SafeTransport
 
@@ -126,13 +128,24 @@ def capture(db, source_id, run_id, discoveries, config, approved_at):
 
     def observe(key, item, *, missing=False):
         draft = item.draft
+        if draft and config.adapter == "himalayas":
+            draft = draft.model_copy(update={"organisation_id": employer_id(db, item.provenance)})
         payload = draft.model_dump(mode="json") if draft else None
         closed = missing or item.closed
         prior = previous.get(key)
         state = (
             "withdrawal_review" if closed else "pending_review" if draft else "validation_failed"
         )
-        signature = digest(json.dumps([payload, closed], sort_keys=True))
+        fingerprint = [payload, closed]
+        if config.adapter == "himalayas":
+            fingerprint.append(
+                {
+                    key: value
+                    for key, value in item.provenance.items()
+                    if key != "provider_updated_at"
+                }
+            )
+        signature = digest(json.dumps(fingerprint, sort_keys=True))
         if prior and signature == prior.content_sha256:
             counts["duplicate"] += 1
             counts["parser_failures"] += state == "validation_failed"
@@ -273,10 +286,24 @@ def run_source(source_id: UUID, transport_factory=SafeTransport):
                     )
                 failure = None
                 try:
-                    adapter = ADAPTERS[config.adapter](
+                    adapter_class = (
+                        HimalayasAdapter
+                        if config.adapter == "himalayas"
+                        else (ADAPTERS[config.adapter])
+                    )
+                    adapter = adapter_class(
                         config, source["endpoint_url"], source["organisation_id"]
                     )
-                    discoveries = adapter.discover(transport_factory(config))
+                    transport = transport_factory(config)
+                    checks, closed = [], {}
+                    if isinstance(adapter, HimalayasAdapter):
+                        with db.begin():
+                            checks = status_batch(db, source_id, config.himalayas_status_checks)
+                        discoveries, closed = adapter.discover(
+                            transport, status_guids=[row.official_url for row in checks]
+                        )
+                    else:
+                        discoveries = adapter.discover(transport)
                     with db.begin():
                         current = (
                             db.execute(
@@ -305,6 +332,20 @@ def run_source(source_id: UUID, transport_factory=SafeTransport):
                         result = capture(
                             db, source_id, run_id, discoveries, config, source["approved_at"]
                         )
+                        if isinstance(adapter, HimalayasAdapter):
+                            result.update(adapter.counts)
+                            result["status_cursor"] = str(checks[-1].id) if checks else None
+                            result["status_withdrawn"] = sum(
+                                withdraw_confirmed(
+                                    db,
+                                    source_id,
+                                    row.id,
+                                    row.official_url,
+                                    closed[row.official_url],
+                                )
+                                for row in checks
+                                if row.official_url in closed
+                            )
                         finished = now()
                         partial = result["parser_failures"] > 0
                         db.execute(

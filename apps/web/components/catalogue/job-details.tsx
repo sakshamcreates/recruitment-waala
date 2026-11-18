@@ -68,19 +68,22 @@ export function SourceAttribution({ item }: { item: Opportunity }) {
       ) : (
         <>
           <p>
-            <strong>{organisation}</strong> · {provenance.source}
+            <strong>{organisation}</strong>
+            {provenance.provider !== "himalayas" && ` · ${provenance.source}`}
           </p>
           {provenance.verifiedOn && (
             <p>Reviewed on {formatDate(provenance.verifiedOn)}</p>
           )}
-          {provenance.officialUrl && (
+          {(provenance.officialUrl || provenance.provider === "himalayas") && (
             <a
               className="text-link"
-              href={provenance.officialUrl}
+              href={provenance.officialUrl ?? "https://himalayas.app"}
               target="_blank"
               rel="noopener noreferrer"
             >
-              Official notice
+              {provenance.provider === "himalayas"
+                ? "Source: Himalayas"
+                : "Official notice"}
             </a>
           )}
         </>

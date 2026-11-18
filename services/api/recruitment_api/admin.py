@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from . import schema
 from .catalogue import Database, source_links
 from .contracts import Draft, DraftState, DraftUpdate, Transition, now
+from .ingestion.himalayas_policy import employer_slug, identity
 from .models import Details, Job, Observation, Organisation, Publication, Source
 from .settings import setting
 
@@ -152,7 +153,6 @@ def evidence(db, job, source_item_id):
         .where(
             Observation.id == source_item_id,
             Observation.job_id == job.id,
-            Source.organisation_id == job.organisation_id,
             Source.enabled.is_(True),
             Source.approved_at <= now(),
             Source.permission_reference.is_not(None),
@@ -166,9 +166,35 @@ def evidence(db, job, source_item_id):
     polling = schema.source_polling
     config = db.scalar(select(polling.c.configuration).where(polling.c.source_id == source.id))
     candidate = schema.ingestion_candidates
-    candidate_state = db.scalar(
-        select(candidate.c.state).where(candidate.c.item_id == observation.id)
+    record = (
+        db.execute(select(candidate).where(candidate.c.item_id == observation.id))
+        .mappings()
+        .one_or_none()
     )
+    candidate_state = record["state"] if record else None
+    if config and config.get("adapter") == "himalayas":
+        company = identity(observation.source_url)
+        organisation = db.get(Organisation, job.organisation_id)
+        stored = record["payload"] if record else None
+        if (
+            source.slug != "himalayas"
+            or not company
+            or not organisation
+            or organisation.slug != employer_slug(company[0])
+            or job.category != "corporate_job"
+            or job.cycle_key
+            != f"himalayas:{hashlib.sha256(observation.source_url.encode()).hexdigest()}"
+            or not record
+            or record["provenance"].get("india_eligible") is not True
+            or not stored
+            or not details.apply_url
+            or details.apply_url != stored.get("apply_url")
+        ):
+            raise HTTPException(
+                422, "Himalayas authorisation requires exact eligible API evidence."
+            )
+    elif source.organisation_id != job.organisation_id:
+        raise HTTPException(422, "Source organisation does not match the opportunity.")
     if candidate_state is not None:
         latest = db.scalar(
             select(Observation.id)

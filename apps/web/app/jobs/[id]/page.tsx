@@ -14,7 +14,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         : item.title,
     description: item.summary,
     robots: {
-      index: item.provenance.kind === "official" && item.status === "published",
+      index:
+        item.provenance.kind === "official" &&
+        item.status === "published" &&
+        item.provenance.provider !== "himalayas",
       follow: true,
     },
   };

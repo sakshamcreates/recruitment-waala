@@ -49,7 +49,12 @@ class Corporate(Common):
     category: Literal["corporate_job"]
     experience: Short | None = None
     mode: Literal["On-site", "Hybrid", "Remote"] | None = None
-    employment: Literal["Full-time", "Contract"] | None = None
+    employment: (
+        Literal[
+            "Full-time", "Part-time", "Contract", "Temporary", "Internship", "Volunteer", "Other"
+        ]
+        | None
+    ) = None
     skills: list[Short] = Field(default_factory=list, max_length=30)
     salary: Short | None = None
 
@@ -148,6 +153,7 @@ class Query(Input):
 
 class Attribution(BaseModel):
     source: str
+    provider: Literal["himalayas"] | None = None
     official_url: str | None
     observed_at: datetime
     verified_at: datetime

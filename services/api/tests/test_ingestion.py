@@ -1,6 +1,5 @@
 import io
 import json
-import os
 import socket
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
@@ -13,14 +12,12 @@ from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 from recruitment_api import schema
 from recruitment_api.contracts import now
-from recruitment_api.database import get_session
 from recruitment_api.ingestion import runner
 from recruitment_api.ingestion.adapters import ADAPTERS
 from recruitment_api.ingestion.policy import PollConfig, in_scope
 from recruitment_api.ingestion.transport import FetchError, public_address
 from recruitment_api.main import app
-from sqlalchemy import create_engine, func, insert, select, text, update
-from sqlalchemy.orm import Session
+from sqlalchemy import func, insert, select, update
 
 ROOT = "/api/v1/admin/ingestion"
 ORIGIN = "https://www.upsc.gov.in"
@@ -200,39 +197,6 @@ def test_dispatch_and_retry_boundaries(monkeypatch):
         assert poll.run(str(ORG)) == {"state": "failed", "code": "timeout"}
     finally:
         poll.pop_request()
-
-
-@pytest.fixture
-def anyio_backend():
-    return "asyncio"
-
-
-@pytest.fixture
-def ingestion_db(monkeypatch):
-    url = os.getenv("TEST_DATABASE_URL")
-    if not url:
-        pytest.skip("Set TEST_DATABASE_URL to a disposable PostgreSQL database.")
-    namespace = f"ingest_{uuid4().hex}"
-    admin = create_engine(url)
-    with admin.begin() as connection:
-        connection.execute(text(f"CREATE SCHEMA {namespace}"))
-    database = create_engine(url, connect_args={"options": f"-csearch_path={namespace}"})
-    schema.metadata.create_all(database)
-    monkeypatch.setattr(runner, "engine", lambda: database)
-
-    def session():
-        with Session(database) as db:
-            yield db
-
-    app.dependency_overrides[get_session] = session
-    try:
-        yield database
-    finally:
-        app.dependency_overrides.pop(get_session, None)
-        database.dispose()
-        with admin.begin() as connection:
-            connection.execute(text(f"DROP SCHEMA {namespace} CASCADE"))
-        admin.dispose()
 
 
 @pytest.mark.anyio

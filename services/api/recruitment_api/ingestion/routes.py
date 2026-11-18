@@ -40,6 +40,7 @@ def register(payload: SourceInput, db: Database):
                 "greenhouse": "approved_api",
                 "lever": "approved_api",
                 "json": "authorised_feed",
+                "himalayas": "approved_api",
                 "government_html": "official_page",
                 "government_pdf": "official_page",
             }[config.adapter]

@@ -36,3 +36,10 @@ Provider terms references reviewed alongside the API documentation include
 the [Greenhouse legal center](https://www.greenhouse.com/de/legal) and
 [Lever terms of service](https://www.lever.co/legal/terms-of-service).
 A board-specific agreement and authorisation remain necessary for this deployment.
+
+### Himalayas
+
+The [Phase 3.2 activation guide](HIMALAYAS_OPERATIONS.md) records the API
+licence, safe configuration and first-publication workflow. Read-only live
+API probes succeeded. Polling remains unregistered until an operator records
+the internal approval decision.

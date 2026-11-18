@@ -66,6 +66,9 @@ export function mapOpportunity(raw: unknown): Opportunity {
   const provenance = {
     kind: "official" as const,
     source: required(source.source),
+    ...(source.provider === "himalayas"
+      ? { provider: "himalayas" as const }
+      : {}),
     officialUrl: officialUrl(source.official_url),
     verifiedOn: date(source.verified_at),
   };
@@ -79,7 +82,12 @@ export function mapOpportunity(raw: unknown): Opportunity {
     publishedOn,
     deadline: date(row.deadline),
     status,
-    applyUrl: status === "published" ? officialUrl(row.apply_url) : undefined,
+    applyUrl:
+      status === "published" && officialUrl(row.apply_url)
+        ? provenance.provider === "himalayas"
+          ? optional(row.apply_url)
+          : officialUrl(row.apply_url)
+        : undefined,
     provenance,
   };
   const skills = Array.isArray(fields.skills)

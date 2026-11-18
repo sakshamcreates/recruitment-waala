@@ -73,6 +73,19 @@ export function CorporateJobCard({ job }: { job: CorporateJob }) {
         <p>
           {[job.location, job.mode, job.experience].filter(Boolean).join(" · ")}
         </p>
+        {job.provenance.kind === "official" &&
+          job.provenance.provider === "himalayas" && (
+            <p>
+              <a
+                className="relative z-10 underline"
+                href={job.provenance.officialUrl ?? "https://himalayas.app"}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Source: Himalayas
+              </a>
+            </p>
+          )}
         {job.salary && <p className="card-salary">{job.salary}</p>}
         <p className="skills">{job.skills.join(" · ")}</p>
       </article>

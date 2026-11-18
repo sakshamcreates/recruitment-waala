@@ -51,3 +51,25 @@ test("suppresses approved-format application links on withdrawn records", () => 
   });
   assert.equal(record.applyUrl, undefined);
 });
+
+test("preserves Himalayas credit and the exact provider apply URL", () => {
+  const guid = "https://himalayas.app/companies/offline/jobs/fixture";
+  const apply = guid + "?utm_source=api&source=a%2Fb";
+  const record = mapOpportunity({
+    ...notice,
+    details: { category: "corporate_job", mode: "Remote" },
+    provenance: {
+      ...notice.provenance,
+      source: "himalayas",
+      provider: "himalayas",
+      official_url: guid,
+    },
+    apply_url: apply,
+  });
+  assert.equal(record.applyUrl, apply);
+  assert.equal(record.provenance.kind, "official");
+  if (record.provenance.kind === "official") {
+    assert.equal(record.provenance.provider, "himalayas");
+    assert.equal(record.provenance.officialUrl, guid);
+  }
+});
