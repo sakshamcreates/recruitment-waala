@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, type FormEvent, type MouseEvent } from "react";
 import { Button, Input } from "@/components/ui/primitives";
 import { EmptyState } from "@/components/ui/states";
@@ -64,21 +64,39 @@ export function Pagination({
 export function SearchResults({
   items,
   category,
+  livePage,
 }: {
   items: readonly Opportunity[];
   category?: Category;
+  livePage?: {
+    total: number;
+    page: number;
+    limit: number;
+    facets: Record<string, string[]>;
+  };
 }) {
+  const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
   const state = readSearch(params);
   if (category) state.category = "";
-  const matches = searchCatalogue(items, state, demoDate);
-  const result = paginate(matches, state.page);
+  const matches = livePage ? items : searchCatalogue(items, state, demoDate);
+  const result = livePage
+    ? {
+        items,
+        page: livePage.page,
+        totalPages: Math.max(1, Math.ceil(livePage.total / livePage.limit)),
+        start: (livePage.page - 1) * livePage.limit,
+      }
+    : paginate(matches, state.page);
+  const total = livePage?.total ?? matches.length;
+  const noun = livePage ? "opportunities" : "examples";
   const resultsHeading = useRef<HTMLHeadingElement>(null);
   const write = (next: Partial<SearchState>) => {
     const url = searchHref(path, next);
     if (url !== window.location.pathname + window.location.search)
-      window.history.pushState(null, "", url);
+      if (livePage) router.push(url);
+      else window.history.pushState(null, "", url);
   };
 
   function apply(next: Partial<SearchState>) {
@@ -108,14 +126,15 @@ export function SearchResults({
     resultsHeading.current?.focus();
   }
 
-  const summary = matches.length
-    ? `Showing ${result.start + 1}–${result.start + result.items.length} of ${matches.length} examples`
-    : "0 examples";
+  const summary = total
+    ? `Showing ${result.start + 1}–${result.start + result.items.length} of ${total} ${noun}`
+    : `0 ${noun}`;
 
   return (
     <div className="browse-layout">
       <SearchFilters
         items={items}
+        liveFacets={livePage?.facets}
         category={category}
         state={state}
         onApply={apply}

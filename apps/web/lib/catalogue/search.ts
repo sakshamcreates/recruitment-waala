@@ -5,6 +5,7 @@ export const pageSize = 5;
 export const facetKeys = [
   "state",
   "qualification",
+  "experience",
   "organisation",
   "type",
   "mode",
@@ -32,6 +33,7 @@ export function readSearch(
     category: isCategory(category) ? category : "",
     state: get("state"),
     qualification: get("qualification"),
+    experience: get("experience"),
     organisation: get("organisation"),
     type: get("type"),
     mode: get("mode"),
@@ -59,6 +61,8 @@ export function searchHref(path: string, state: Partial<SearchState>): string {
 
 export function facet(item: Opportunity, key: TextField): string | undefined {
   switch (key) {
+    case "experience":
+      return "experience" in item ? item.experience : undefined;
     case "qualification":
       return "qualification" in item ? item.qualification : undefined;
     case "type":

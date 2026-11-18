@@ -9,14 +9,23 @@ type BaseOpportunity = {
   state?: string;
   location?: string;
   deadline?: string;
-  provenance: { kind: "illustrative" };
+  status?: "published" | "expired" | "withdrawn";
+  applyUrl?: string;
+  provenance:
+    | { kind: "illustrative" }
+    | {
+        kind: "official";
+        source: string;
+        officialUrl?: string;
+        verifiedOn?: string;
+      };
 };
 
 export type GovernmentJob = BaseOpportunity & {
   category: "government-jobs";
-  reference: string;
-  qualification: string;
-  employment: "Permanent" | "Contract";
+  reference?: string;
+  qualification?: string;
+  employment?: string;
   age?: string;
   fee?: string;
   vacancies?: number;
@@ -25,24 +34,24 @@ export type GovernmentJob = BaseOpportunity & {
 
 export type CorporateJob = BaseOpportunity & {
   category: "corporate-jobs";
-  experience: string;
-  mode: "On-site" | "Hybrid" | "Remote";
-  employment: "Full-time" | "Contract";
+  experience?: string;
+  mode?: string;
+  employment?: string;
   skills: readonly string[];
   salary?: string;
 };
 
 export type Internship = BaseOpportunity & {
   category: "internships";
-  duration: string;
-  compensation: "Paid" | "Unpaid";
+  duration?: string;
+  compensation?: string;
   skills: readonly string[];
   stipend?: string;
 };
 
 export type ExamNotice = BaseOpportunity & {
   category: ExamCategory;
-  stage: string;
+  stage?: string;
   examOn?: string;
 };
 

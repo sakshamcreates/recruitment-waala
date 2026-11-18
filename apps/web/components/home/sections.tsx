@@ -41,15 +41,21 @@ function SectionHeading({
   );
 }
 
-function DeadlineList({ items }: { items: readonly Opportunity[] }) {
-  const upcoming = upcomingDeadlines(items, demoDate).slice(0, 3);
+function DeadlineList({
+  upcoming,
+  demo,
+}: {
+  upcoming: readonly Opportunity[];
+  demo: boolean;
+}) {
   return (
     <aside className="deadline-panel" aria-labelledby="deadlines-title">
       <div className="deadline-heading">
         <CalendarDays size={20} aria-hidden="true" />
         <h2 id="deadlines-title">Upcoming deadlines</h2>
       </div>
-      <p>Dates from the illustrative catalogue.</p>
+      {demo && <p>Dates from the illustrative catalogue.</p>}
+      {!upcoming.length && <p>No upcoming deadlines.</p>}
       <ul>
         {upcoming.map((item) => (
           <li key={item.id}>
@@ -73,7 +79,15 @@ function DeadlineList({ items }: { items: readonly Opportunity[] }) {
   );
 }
 
-export function HomeSections({ items }: { items: readonly Opportunity[] }) {
+export function HomeSections({
+  items,
+  demo,
+  deadlines,
+}: {
+  items: readonly Opportunity[];
+  demo: boolean;
+  deadlines?: readonly Opportunity[];
+}) {
   const newest = searchCatalogue(items, readSearch(), demoDate);
   const government = newest.filter(
     (item) => item.category === "government-jobs",
@@ -86,7 +100,10 @@ export function HomeSections({ items }: { items: readonly Opportunity[] }) {
   );
   return (
     <PageContainer className="home-content">
-      <DemoNotice />
+      {demo && <DemoNotice />}
+      {!demo && !items.length && (
+        <p className="demo-notice">There are no published opportunities yet.</p>
+      )}
       <div className="home-lead">
         <section aria-labelledby="government-heading">
           <SectionHeading
@@ -101,7 +118,10 @@ export function HomeSections({ items }: { items: readonly Opportunity[] }) {
             ))}
           </div>
         </section>
-        <DeadlineList items={items} />
+        <DeadlineList
+          upcoming={deadlines ?? upcomingDeadlines(items, demoDate).slice(0, 3)}
+          demo={demo}
+        />
       </div>
       <section className="home-section" aria-labelledby="corporate-heading">
         <SectionHeading
@@ -155,8 +175,9 @@ export function HomeSections({ items }: { items: readonly Opportunity[] }) {
           <h2>Know where an opportunity comes from.</h2>
           <p>
             Published opportunities will identify the issuing organisation and
-            link to its official notice. This preview uses fictional issuers and
-            example dates, so it has no official application or download links.
+            link to its official notice.{" "}
+            {demo &&
+              "This preview uses fictional issuers and example dates, so it has no official application or download links."}
           </p>
         </div>
       </Card>

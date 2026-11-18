@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Integer,
     MetaData,
     String,
     Table,
@@ -156,6 +157,24 @@ source_items = Table(
     CheckConstraint("content_sha256 ~ '^[0-9a-f]{64}$'", name="sha256"),
 )
 
+publication = Table(
+    "publication",
+    metadata,
+    Column("job_id", Uuid, ForeignKey("jobs.id"), primary_key=True),
+    Column("review_state", String(16), nullable=False, server_default="draft"),
+    Column("version", Integer, nullable=False, server_default="1"),
+    Column("source_item_id", Uuid, ForeignKey("source_items.id")),
+    Column("verified_at", DateTime(timezone=True)),
+    Column("is_demo", Boolean, nullable=False, server_default=false()),
+    CheckConstraint(
+        "review_state IN ('draft','submitted','approved','rejected')", name="review_state"
+    ),
+    CheckConstraint(
+        "verified_at IS NULL OR (source_item_id IS NOT NULL AND NOT is_demo)",
+        name="verification_evidence",
+    ),
+)
+
 users = Table(
     "users",
     metadata,
@@ -225,4 +244,36 @@ moderation_reviews = Table(
     CheckConstraint(
         "decision IN ('approve','reject','request_changes','withdraw')", name="decision"
     ),
+)
+
+
+source_polling = Table(
+    "source_polling",
+    metadata,
+    Column("source_id", Uuid, ForeignKey("source_registry.id"), primary_key=True),
+    Column("configuration", JSONB, nullable=False),
+    Column("next_poll_at", DateTime(timezone=True), nullable=False, index=True),
+    Column("last_success_at", DateTime(timezone=True)),
+    Column("last_failure_at", DateTime(timezone=True)),
+    Column("consecutive_failures", Integer, nullable=False, server_default="0"),
+)
+
+ingestion_candidates = Table(
+    "ingestion_candidates",
+    metadata,
+    Column("item_id", Uuid, ForeignKey("source_items.id"), primary_key=True),
+    Column("state", String(24), nullable=False, index=True),
+    Column("payload", JSONB),
+    Column("provenance", JSONB, nullable=False),
+    CheckConstraint(
+        "state IN ('pending_review','validation_failed','withdrawal_review','accepted','rejected')",
+        name="state",
+    ),
+)
+
+ingestion_run_metrics = Table(
+    "ingestion_run_metrics",
+    metadata,
+    Column("run_id", Uuid, ForeignKey("ingestion_runs.id"), primary_key=True),
+    Column("counts", JSONB, nullable=False),
 )

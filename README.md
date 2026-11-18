@@ -2,25 +2,24 @@
 
 **Every Opportunity. One Platform.**
 
-Phase 1 adds an illustrative discovery experience for Indian government jobs, corporate roles, internships and exam updates. The Next.js web app and FastAPI also expose health endpoints. PostgreSQL holds an empty
-catalogue and provenance schema. Celery is configured for a dedicated ingestion
-queue with no registered ingestion tasks or schedules.
+Recruitment Waala combines Indian government recruitment, corporate roles,
+internships and exam notices. Phase 2 serves the existing Next.js frontend from
+the PostgreSQL catalogue through FastAPI. Celery and Beat poll due sources with recorded approval.
 
-## Frontend preview
+## Phase 2 catalogue
 
-Run `npm ci` and `npm run dev -w @recruitment/web`, then visit
-`http://127.0.0.1:3000`. The frontend reads local typed fixtures through its
-catalogue repository and runs independently of Docker or FastAPI.
+The web app reads the FastAPI public catalogue by default. Set
+`CATALOGUE_API_ORIGIN=http://127.0.0.1:8000` in `apps/web/.env.local` or the
+server environment. An empty migrated database produces an empty public
+catalogue. A backend failure produces an error state.
 
-- Browse the seven category routes, search at `/search` and open an example at
-  `/jobs/<id>`. Search terms, filters, sort and page are stored in the URL.
-- `/dashboard` and `/admin` show read-only demonstrations.
-- The catalogue uses fictional issuers, references and dates. The deadline
-  filter uses 18 November 2026 as the sample date. Applications, source links,
-  accounts, and administrative actions are unavailable.
-- All preview pages carry noindex metadata. An optional build-time
-  `SITE_ORIGIN` sets the HTTPS canonical base for the homepage, category and
-  search routes. A published-only sitemap belongs with the verified catalogue.
+For a frontend-only demonstration, run
+`CATALOGUE_MODE=demo npm run dev -w @recruitment/web`. This explicit mode uses
+fictional fixtures and example dates. Production builds always use FastAPI
+for catalogue reads. The dashboard and moderation routes remain demonstration UI.
+
+The [API specification](docs/API_SPEC.md) documents endpoint examples, the
+protected editorial workflow, token rotation and manual source evidence.
 
 ## Full monorepo prerequisites
 
@@ -58,21 +57,23 @@ uv run alembic upgrade head
 Start each process in a separate terminal from the workspace root.
 
 ```sh
-uv run uvicorn recruitment_api.main:app --app-dir services/api --reload
+uv run uvicorn recruitment_api.main:app --app-dir services/api --no-access-log --reload
 npm run dev -w @recruitment/web
-PYTHONPATH=workers uv run celery -A ingestion.celery_app:app worker --loglevel=INFO
+PYTHONPATH=services/api:workers uv run celery -A ingestion.celery_app:app worker --loglevel=INFO
 ```
 
 The worker is optional for health checks. Inspect the local endpoints with:
 
 ```sh
 curl --fail --silent http://127.0.0.1:8000/health
+curl --fail --silent http://127.0.0.1:8000/ready
+curl --fail --silent http://127.0.0.1:8000/api/v1/opportunities
 curl --fail --silent http://127.0.0.1:8000/openapi.json
 curl --fail --silent http://127.0.0.1:3000/health
 ```
 
 The API returns `{"status":"ok"}`, and the frontend shows a web status message.
-Both are liveness checks. Use `docker compose ps` for dependency health. Use
+The health endpoints are liveness checks. API readiness also checks the database. Use `docker compose ps` for dependency health. Use
 `docker compose down` to stop local services and retain volumes.
 
 ## Test and format
@@ -106,3 +107,32 @@ disposable database for that check.
 - [API specification](docs/API_SPEC.md)
 - [Source and verification policy](docs/SOURCE_POLICY.md)
 - [Phase roadmap](docs/PHASE_ROADMAP.md)
+
+## PostgreSQL integration test and optional demo seed
+
+Point `TEST_DATABASE_URL` at a migrated disposable PostgreSQL database and
+run `uv run pytest`. The integration test rolls back its own records. CI runs
+this check with the ephemeral Compose database.
+
+For a persistent editorial sample, create a separate PostgreSQL database whose
+name ends in `_demo`, point `DATABASE_URL` at it, then run:
+
+```sh
+uv run alembic upgrade head
+RW_ENV=development PYTHONPATH=services/api uv run python -m recruitment_api.seed_demo
+```
+
+The sample is a fictional draft with no external links. It remains outside all
+public responses. For the Phase 3 ingestion handoff, adapter-produced data should
+enter through `source_registry`, `ingestion_runs` and `source_items`. Keep
+observations separate from moderation and publication. See the
+[source policy](docs/SOURCE_POLICY.md) and [roadmap](docs/PHASE_ROADMAP.md) for
+permission gates and sequencing.
+
+## Phase 3 worker and scheduling
+
+Phase 3 adds an approval-gated ingestion worker and scheduler. See
+[operations](docs/INGESTION_OPERATIONS.md) to start Beat and the worker,
+[the source registry](docs/SOURCE_REGISTRY.md) for onboarding decisions, and
+[verification](docs/PHASE_3_VERIFICATION.md) for local tests. Existing
+installations must run `uv run alembic upgrade head` before running Phase 3.

@@ -1,5 +1,5 @@
-# Ingestion worker
+# Recruitment ingestion worker
 
-The Celery app reserves the `ingestion` queue and accepts JSON messages via Redis.
-Phase 0 registers no tasks or schedules. See [source policy](../../docs/SOURCE_POLICY.md)
-for the approval and verification requirements for future adapters.
+Start a Celery worker and a single scheduler with
+[the Phase 3 operations guide](../../docs/INGESTION_OPERATIONS.md).
+The worker only processes registered, approved and due sources.

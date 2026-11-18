@@ -21,6 +21,7 @@ import type { Opportunity } from "@/lib/catalogue/types";
 
 const facetLabels = {
   state: "State",
+  experience: "Experience",
   qualification: "Qualification",
   organisation: "Organisation",
   type: "Type",
@@ -32,11 +33,19 @@ type FilterProps = {
   state: SearchState;
   items: readonly Opportunity[];
   category?: Category;
+  liveFacets?: Record<string, string[]>;
   onApply: (state: SearchState) => void;
   onClear: () => void;
 };
 
-function FilterForm({ state, items, category, onApply, onClear }: FilterProps) {
+function FilterForm({
+  state,
+  items,
+  category,
+  liveFacets,
+  onApply,
+  onClear,
+}: FilterProps) {
   const id = useId();
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,9 +81,11 @@ function FilterForm({ state, items, category, onApply, onClear }: FilterProps) {
       {facetKeys.map((key) => {
         const values = [
           ...new Set(
-            items
-              .map((item) => facet(item, key))
-              .filter((value): value is string => Boolean(value)),
+            liveFacets
+              ? (liveFacets[key] ?? [])
+              : items
+                  .map((item) => facet(item, key))
+                  .filter((value): value is string => Boolean(value)),
           ),
         ].sort((a, b) => a.localeCompare(b, "en-IN"));
         const current = state[key];
@@ -103,12 +114,15 @@ function FilterForm({ state, items, category, onApply, onClear }: FilterProps) {
           </div>
         );
       })}
-      {(!category || items.some((item) => item.deadline) || state.deadline) && (
+      {(liveFacets ||
+        !category ||
+        items.some((item) => item.deadline) ||
+        state.deadline) && (
         <div className="filter-field">
           <label htmlFor={`${id}-deadline`}>Deadline</label>
           <select
             className="field"
-            aria-describedby={`${id}-deadline-hint`}
+            aria-describedby={liveFacets ? undefined : `${id}-deadline-hint`}
             id={`${id}-deadline`}
             name="deadline"
             defaultValue={state.deadline}
@@ -117,9 +131,11 @@ function FilterForm({ state, items, category, onApply, onClear }: FilterProps) {
             <option value="week">Within 7 days</option>
             <option value="month">Within 30 days</option>
           </select>
-          <small className="filter-hint" id={`${id}-deadline-hint`}>
-            From the demo date, {formatDate(demoDate, true)}.
-          </small>
+          {!liveFacets && (
+            <small className="filter-hint" id={`${id}-deadline-hint`}>
+              From the demo date, {formatDate(demoDate, true)}.
+            </small>
+          )}
         </div>
       )}
       <div className="filter-buttons">

@@ -1,14 +1,21 @@
 import { canonical } from "@/lib/metadata";
 import type { Metadata } from "next";
-import { BrowsePage } from "@/components/catalogue/browse-page";
+import {
+  BrowsePage,
+  type QueryParams,
+} from "@/components/catalogue/browse-page";
 
 export const metadata: Metadata = {
   ...canonical("/search"),
   title: "Search opportunities",
-  description:
-    "Filter, sort and explore the illustrative Recruitment Waala catalogue.",
+  robots: { index: false, follow: true },
+  description: "Filter, sort and explore the Recruitment Waala catalogue.",
 };
 
-export default function SearchPage() {
-  return <BrowsePage />;
+export default function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<QueryParams>;
+}) {
+  return <BrowsePage query={searchParams} />;
 }

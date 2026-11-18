@@ -40,5 +40,6 @@ jobs:
           docker compose up -d --wait
           uv run --no-sync alembic upgrade head
           uv run --no-sync alembic check
+          TEST_DATABASE_URL="$DATABASE_URL" uv run --no-sync pytest
           uv run --no-sync alembic downgrade base
           uv run --no-sync alembic upgrade head

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Footer, Navbar } from "@/components/layout/site";
+import { isDemo } from "@/lib/catalogue/repository";
 import { getSiteOrigin } from "@/lib/metadata";
 import "./globals.css";
 
@@ -11,8 +12,8 @@ export const metadata: Metadata = {
     template: "%s | Recruitment Waala",
   },
   description:
-    "Explore an illustrative catalogue of Indian government jobs, corporate roles, internships and exam updates.",
-  robots: { index: false, follow: true },
+    "Explore a catalogue of Indian government jobs, corporate roles, internships and exam updates.",
+  robots: { index: !isDemo, follow: true },
 };
 
 export default function RootLayout({

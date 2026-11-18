@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/primitives";
 import { DeadlineIndicator } from "@/components/catalogue/listings";
 import { demoDate } from "@/lib/catalogue/fixtures";
 import { upcomingDeadlines } from "@/lib/catalogue/search";
-import { catalogue } from "@/lib/catalogue/repository";
+import { isDemo } from "@/lib/catalogue/repository";
+import { demoCatalogue as catalogue } from "@/lib/catalogue/demo-repository";
 
 export const metadata: Metadata = {
   title: "Dashboard preview",
@@ -14,10 +15,12 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const [government, corporate] = await Promise.all([
-    catalogue.list("government-jobs"),
-    catalogue.list("corporate-jobs"),
-  ]);
+  const [government, corporate] = isDemo
+    ? await Promise.all([
+        catalogue.list("government-jobs"),
+        catalogue.list("corporate-jobs"),
+      ])
+    : [[], []];
   const saved = [...government.slice(0, 1), ...corporate.slice(0, 1)];
   const deadlines = upcomingDeadlines(government, demoDate).slice(0, 2);
   return (
@@ -29,6 +32,9 @@ export default async function DashboardPage() {
       <div className="preview-grid">
         <Card className="preview-card">
           <h2>Saved jobs</h2>
+          {!saved.length && (
+            <p className="muted">Saved jobs are unavailable in this preview.</p>
+          )}
           <ul className="preview-list">
             {saved.map((job) => (
               <li key={job.id}>
@@ -69,6 +75,9 @@ export default async function DashboardPage() {
         </Card>
         <Card className="preview-card">
           <h2>Upcoming deadlines</h2>
+          {!deadlines.length && (
+            <p className="muted">No example deadlines are loaded.</p>
+          )}
           <ul className="preview-list">
             {deadlines.map((job) => (
               <li key={job.id}>

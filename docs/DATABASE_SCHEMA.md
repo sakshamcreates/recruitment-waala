@@ -67,3 +67,23 @@ use a redacted projection. Current discovery must filter both status and expiry 
 that a delayed expiry task cannot expose an opportunity as open. Discovery and expiry
 indexes support initial PostgreSQL queries. Published evidence retention, account
 deletion and secure snapshot storage need operational policies before launch.
+
+## Phase 2 editorial state
+
+Revision `0002_publication` adds one publication record per managed
+opportunity with a review state, optimistic version, an optional evidence
+reference, an editorial verification timestamp, and a demo flag. The review
+state is independent of the Phase 0 lifecycle status. Public queries join
+the job, details, organisation, publication, observation and source. A
+historical job without approved evidence remains private. Draft identity
+still uses the existing organisation, cycle, category and opportunity keys.
+Test data is transaction-scoped, and the optional persistent demo command
+inserts a draft excluded from every public query.
+
+## Phase 3 ingestion
+
+Revision `0003_ingestion_governance` adds `source_polling` for approved scope,
+configuration, due time and health, `ingestion_run_metrics` for protected
+telemetry, and `ingestion_candidates` for the normalised payload, extraction
+provenance and disposition attached to a source observation. The prior
+canonical identity constraint and source/run composite foreign key are reused.

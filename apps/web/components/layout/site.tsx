@@ -1,5 +1,6 @@
 import { ArrowUpRight, Search } from "lucide-react";
 import Link from "next/link";
+import { isDemo } from "@/lib/catalogue/repository";
 import { PageContainer } from "@/components/ui/primitives";
 import { MobileNavigation, NavigationLinks } from "./navigation";
 
@@ -60,7 +61,7 @@ export function Footer() {
           </div>
         </div>
         <div className="footer-note">
-          Recruitment Waala · Illustrative catalogue
+          Recruitment Waala{isDemo && " · Illustrative catalogue"}
         </div>
       </PageContainer>
     </footer>

@@ -51,16 +51,40 @@ function detailsFor(item: Opportunity): Fact[] {
   }
 }
 
-export function SourceAttribution({ organisation }: { organisation: string }) {
+export function SourceAttribution({ item }: { item: Opportunity }) {
+  const { organisation, provenance } = item;
   return (
     <Card className="detail-card source-attribution">
       <Shield size={22} aria-hidden="true" />
       <h2>Source attribution</h2>
-      <p>
-        <strong>{organisation}</strong> is a fictional issuer used to
-        demonstrate catalogue attribution.
-      </p>
-      <p>Official source unavailable in this preview.</p>
+      {provenance.kind === "illustrative" ? (
+        <>
+          <p>
+            <strong>{organisation}</strong> is a fictional issuer used to
+            demonstrate catalogue attribution.
+          </p>
+          <p>Official source unavailable in this preview.</p>
+        </>
+      ) : (
+        <>
+          <p>
+            <strong>{organisation}</strong> · {provenance.source}
+          </p>
+          {provenance.verifiedOn && (
+            <p>Reviewed on {formatDate(provenance.verifiedOn)}</p>
+          )}
+          {provenance.officialUrl && (
+            <a
+              className="text-link"
+              href={provenance.officialUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Official notice
+            </a>
+          )}
+        </>
+      )}
     </Card>
   );
 }
@@ -72,7 +96,10 @@ export function JobDetails({
   item: Opportunity;
   related: readonly Opportunity[];
 }) {
-  const exam = "stage" in item;
+  const exam = !["government-jobs", "corporate-jobs", "internships"].includes(
+    item.category,
+  );
+  const demo = item.provenance.kind === "illustrative";
   const facts: Fact[] = [
     ["Organisation", item.organisation],
     ["Location", item.location],
@@ -94,17 +121,25 @@ export function JobDetails({
           {item.location && ` · ${item.location}`}
         </p>
       </header>
-      <DemoNotice>
-        Illustrative record. This opportunity is unavailable for applications or
-        downloads.
-      </DemoNotice>
+      {demo ? (
+        <DemoNotice>
+          Illustrative record. This opportunity is unavailable for applications
+          or downloads.
+        </DemoNotice>
+      ) : (
+        item.status !== "published" && (
+          <p className="demo-notice">
+            This opportunity has been {item.status}.
+          </p>
+        )
+      )}
       <div className="details-layout">
         <Card className="detail-card detail-dates">
           <Clock3 size={22} aria-hidden="true" />
           <h2>Important dates</h2>
           <dl className="date-facts">
             <div>
-              <dt>Example notice date</dt>
+              <dt>{demo ? "Example notice date" : "Published"}</dt>
               <dd>
                 <time dateTime={item.publishedOn}>
                   {formatDate(item.publishedOn)}
@@ -113,16 +148,29 @@ export function JobDetails({
             </div>
             {item.deadline && (
               <div>
-                <dt>Example closing date</dt>
+                <dt>{demo ? "Example closing date" : "Closing date"}</dt>
                 <dd>
                   <DeadlineIndicator value={item.deadline} />
                 </dd>
               </div>
             )}
           </dl>
-          <p className="action-unavailable">
-            {exam ? "Official notice unavailable" : "Applications unavailable"}
-          </p>
+          {item.applyUrl ? (
+            <a
+              className="button button-primary"
+              href={item.applyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {exam ? "Download" : "Apply"}
+            </a>
+          ) : (
+            <p className="action-unavailable">
+              {exam
+                ? "Official notice unavailable"
+                : "Applications unavailable"}
+            </p>
+          )}
         </Card>
         <div className="detail-body">
           <section className="detail-section">
@@ -146,11 +194,11 @@ export function JobDetails({
             </dl>
           </section>
         </div>
-        <SourceAttribution organisation={item.organisation} />
+        <SourceAttribution item={item} />
       </div>
       {related.length > 0 && (
         <section className="detail-section related-section">
-          <h2>Related examples</h2>
+          <h2>{demo ? "Related examples" : "Related opportunities"}</h2>
           <ul>
             {related.map((job) => (
               <li key={job.id}>

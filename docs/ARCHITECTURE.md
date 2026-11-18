@@ -61,3 +61,26 @@ TLS, externally managed secrets and explicit origin policy. Separate runtime,
 migration and operator privileges. Disable verbose errors and redact credentials and
 personal data from logs. Plan backups and restore drills, structured logs with
 request/run IDs, queue lag metrics and stale-source alerts before launch.
+
+## Phase 2 runtime
+
+Next.js reads the catalogue over server-to-server HTTP and sends URL filter
+state to FastAPI. Public data is fetched per request so withdrawals and source
+disabling take effect without waiting for a frontend build. Production fetch
+errors surface through the existing route error boundary. The development-only
+demo can still run with the Phase 1 local search.
+
+Phase 2 uses the existing discovery index and joined, parameterised PostgreSQL
+queries. The initial substring search favours reference and short-token matching.
+Measure query plans before adding trigram or full-text indexes for larger
+catalogues. Configure request limits at the private ingress before internet
+exposure. User identity, per-reviewer attribution and automated workers remain
+separate from the public read path.
+
+## Phase 3 runtime
+
+Beat dispatches due, approved sources to Celery. A PostgreSQL advisory lock
+serialises polling per source. Ingestion records observations, drafts and review
+candidates in the same database used by FastAPI. The frontend continues to
+read the existing public routes without a data-cache delay. See the
+[ingestion architecture](INGESTION_ARCHITECTURE.md) for the publication boundary.

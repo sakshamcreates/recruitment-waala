@@ -4,11 +4,27 @@ import { DemoNotice } from "@/components/ui/demo-notice";
 import { PageContainer } from "@/components/ui/primitives";
 import { LoadingState } from "@/components/ui/states";
 import { categories, type Category } from "@/lib/catalogue/categories";
-import { catalogue } from "@/lib/catalogue/repository";
+import { readSearch } from "@/lib/catalogue/search";
+import { catalogue, isDemo, liveSearch } from "@/lib/catalogue/repository";
 import { SearchResults } from "./search-results";
 
-export async function BrowsePage({ category }: { category?: Category }) {
-  const items = await catalogue.list(category);
+export type QueryParams = Record<string, string | string[] | undefined>;
+
+export async function BrowsePage({
+  category,
+  query,
+}: {
+  category?: Category;
+  query: Promise<QueryParams>;
+}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(await query)) {
+    if (typeof value === "string") params.set(key, value);
+  }
+  const livePage = isDemo
+    ? undefined
+    : await liveSearch(readSearch(params), category);
+  const items = livePage?.items ?? (await catalogue.list(category));
   const title = category ? categories[category].label : "Search opportunities";
   return (
     <PageContainer className="internal-page">
@@ -21,9 +37,9 @@ export async function BrowsePage({ category }: { category?: Category }) {
             : "Search government jobs, corporate roles, internships and exam notices in one place."}
         </p>
       </header>
-      <DemoNotice />
+      {isDemo && <DemoNotice />}
       <Suspense fallback={<LoadingState />}>
-        <SearchResults items={items} category={category} />
+        <SearchResults items={items} category={category} livePage={livePage} />
       </Suspense>
     </PageContainer>
   );

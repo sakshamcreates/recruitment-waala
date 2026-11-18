@@ -4,19 +4,19 @@ import { JobDetails } from "@/components/catalogue/job-details";
 import { catalogue } from "@/lib/catalogue/repository";
 
 type Props = { params: Promise<{ id: string }> };
-export const dynamicParams = false;
-
-export async function generateStaticParams() {
-  return (await catalogue.list()).map(({ id }) => ({ id }));
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const item = await catalogue.get((await params).id);
   if (!item) notFound();
   return {
-    title: `${item.title} (illustrative)`,
+    title:
+      item.provenance.kind === "illustrative"
+        ? `${item.title} (illustrative)`
+        : item.title,
     description: item.summary,
-    robots: { index: false, follow: true },
+    robots: {
+      index: item.provenance.kind === "official" && item.status === "published",
+      follow: true,
+    },
   };
 }
 

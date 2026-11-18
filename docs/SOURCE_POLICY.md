@@ -34,3 +34,20 @@ stop when authorization fails or CAPTCHA appears. Avoid bypass mechanisms and
 unapproved scraping. Treat external payloads and documents as untrusted, restrict
 stored snapshots to authorized staff and avoid candidate-level data. Preserve
 permission evidence, sanitized run outcomes and material corrections.
+
+## Manual evidence in Phase 2
+
+An internal operator reviews the source outside the service, records that
+observation and submits its identifier with the approval decision. A stored
+verification timestamp records this attestation. It does not imply automated
+fetching or verification. Public responses recheck the source association and
+hide records for disabled sources. Future adapters can produce compatible
+observations through the same source registry and evidence tables while
+leaving approval and publication under editorial control.
+
+Phase 3 requires independent URL scopes for fetches, official notices and
+applications. Transport checks DNS and connects to the checked public address
+with TLS hostname validation. Managed government pages use fail-closed robots
+checks. Operators must check current access and redistribution terms even
+when an endpoint is technically accessible. See [source decisions](SOURCE_REGISTRY.md)
+and [operations](INGESTION_OPERATIONS.md).
