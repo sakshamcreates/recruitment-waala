@@ -1,0 +1,44 @@
+name: Project checks
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -w @recruitment/web
+      - run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --locked
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync ruff format --check .
+      - run: uv run --no-sync pytest
+      - name: Verify Compose and migrations
+        shell: bash
+        run: |
+          export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$POSTGRES_PASSWORD"
+          export DATABASE_URL="postgresql+psycopg://recruitment:$POSTGRES_PASSWORD@127.0.0.1:5432/recruitment"
+          trap 'docker compose down --volumes' EXIT
+          docker compose config --quiet
+          docker compose up -d --wait
+          uv run --no-sync alembic upgrade head
+          uv run --no-sync alembic check
+          uv run --no-sync alembic downgrade base
+          uv run --no-sync alembic upgrade head
